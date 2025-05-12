@@ -5,6 +5,13 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_openai.embeddings import OpenAIEmbeddings
 
 from langchain_core.vectorstores import InMemoryVectorStore
+from langchain_core.documents import Document
+from langchain_core.runnables import chain
+
+from typing import List
+
+import langchain
+langchain.debug = True
 
 '''
 documents = [
@@ -18,7 +25,7 @@ documents = [
     ),
 ]
 '''
-file_path = "ex-016-The-Trump-Administration's-Nation-Security-Policy.pdf"
+file_path = "example_data/nke-10k-2023.pdf"
 loader = PyPDFLoader(file_path)
 
 docs = loader.load()
@@ -30,8 +37,8 @@ pprint(docs[0].metadata)
 '''
 
 text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=256,
-    chunk_overlap=64,
+    chunk_size=1000,
+    chunk_overlap=200,
     add_start_index = True,
 )
 all_splits = text_splitter.split_documents(docs)
@@ -56,23 +63,40 @@ vector_store = InMemoryVectorStore(embeddings)
 
 ids = vector_store.add_documents(all_splits)
 '''
-results = vector_store.similarity_search_with_score('What is the policy summary?', k=3)
+results = vector_store.similarity_search_with_score("How many distribution centers does Nike have in the US?", k=3)
 doc, score = results[0]
 print(f'Document: {doc.page_content}')
 print(f'Score: {score}')
 print(f'Metadata: {doc.metadata}')
 '''
 
+@chain
 def retriever(query: str) -> List[Document]:
     return vector_store.similarity_search(query, k=1)
+
+print(f'type(retriever): {type(retriever)}')
+print(f'retriever: {retriever}')
+print(f'retriever.__class__: {retriever.__class__}')
 
 results = retriever.batch([
     "How many distribution centers does Nike have in the US?",
     "When was Nike incorporated?",
 ])
 print(f'results: {len(results)}')
-for idx, doc in results:
+for idx, doc in enumerate(results):
     print(f'idx: {idx}')
-    print(f'Document: {doc.page_content}')
-    print(f'Metadata: {doc.metadata}')
+    print(f'Document: {doc}')
     print()
+
+'''
+retriever = vector_store.as_retriever(search_kwargs={"k": 1})
+results = retriever.batch([
+    "How many distribution centers does Nike have in the US?",
+    "When was Nike incorporated?",
+])
+print(f'results: {len(results)}')
+for idx, doc in enumerate(results):
+    print(f'idx: {idx}')
+    print(f'Document: {doc}')
+    print()
+'''
